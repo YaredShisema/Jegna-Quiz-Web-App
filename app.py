@@ -3,6 +3,7 @@ from flask_mysqldb import MySQL
 import json
 import os
 
+
 app = Flask(__name__, static_folder='static')
 app.secret_key = 'teams'
 # MySQL database configuration
