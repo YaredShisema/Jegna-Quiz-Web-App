@@ -18,6 +18,16 @@
         label{
             color:white;
         }
+        #timer {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+            background-color: #f2f2f2;
+            border-radius: 4px;
+            }
+
+    
         
         .box {
             border-color: yellow;
@@ -36,6 +46,12 @@
         
         h1 {
             text-align: center;
+            color:white;
+        font-size: 20px;
+        }
+        p{
+            text-align: center;
+            color:white; 
         }
         
         h3{
@@ -47,25 +63,26 @@
             
         }
         
-        .question {
-            margin-bottom: 20px;
-        }
-        
-        ul.choices {
-            list-style-type: none;
-            padding: 0;
-        }
-        
-        ul.choices li {
-            margin-bottom: 10px;
-            color: white;
-        }
-
-        
-        
         .submit-button {
             text-align: center;
             margin-top: 20px;
+        }
+        .header-row {
+            background-color: primary;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+        }
+        .question-col {
+            text-align: center;
+            color: white;
+        }
+
+        .score-col {
+            text-align: right;
+            color: white;
+            margin-bottom: 0;
         }
     </style>
 </head>
@@ -83,36 +100,87 @@
         </div>
     </header>
     <div class="container mt-3" style="width:50%; height:50%;">
+        <div class="header-row">
+            <div class="col-4">
+                <div id="timer"></div>
+            </div>
+            <div class="col-4 question-col">
+                <h1>Question {{ question.id }}</h1>
+            </div>
+            <div class="col-4 score-col">
+                <h1>Current Score: {{ score }}</h1>
+            </div>
+        </div>
         <div class="box" style=" width:100%; height:100%;">
-            <form method="POST" action="/Players" onsubmit="submitQuiz()">
-                <h3>{{ question.question }}</h3>
-                {% for choice in question.choices %}
-                    <input type="radio" name="answer" value="{{ choice }}" {% if choice == question.selected_answer %}checked{% endif %}>
-                    <label>{{ choice }}</label><br>
-                {% endfor %}
-                <input type="submit" value="{% if is_last %}Finish{% else %}Submit{% endif %}">
+            <p>{{ question.question }}</p>
+            </p> <!-- Display the current score -->
+            <form method="POST" action="/Players">
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="answer" id="choice1" value="{{ question.choices[0] }}" required>
+                    <label class="form-check-label" for="choice1">
+                        {{ question.choices[0] }}
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="answer" id="choice2" value="{{ question.choices[1] }}" required>
+                    <label class="form-check-label" for="choice2">
+                        {{ question.choices[1] }}
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="answer" id="choice3" value="{{ question.choices[2] }}" required>
+                    <label class="form-check-label" for="choice3">
+                        {{ question.choices[2] }}
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="answer" id="choice4" value="{{ question.choices[3] }}" required>
+                    <label class="form-check-label" for="choice4">
+                        {{ question.choices[3] }}
+                    </label>
+                </div>
+                <div class="submit-button">
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </div>
+                
             </form>
         </div>
     </div>
     <script>
-        function submitQuiz() {
-            const selectedAnswers = {};
-
-            // Get all radio buttons
-            const radioButtons = document.querySelectorAll('input[type="radio"]:checked');
-
-            // Store selected answers in the selectedAnswers object
-            radioButtons.forEach(radioButton => {
-                const questionId = radioButton.name.substring(7); // Extract question ID from name attribute
-                const answer = radioButton.value;
-                selectedAnswers[questionId] = answer;
-            });
-
-            // Perform actions with the selected answers
-            console.log(selectedAnswers);
-        }
-    </script>
+        // Function to start the timer for a specific duration
+        function startTimer(duration, display) {
+            var timer = duration, minutes, seconds;
+            var interval = setInterval(function () {
+                minutes = parseInt(timer / 60, 10);
+                seconds = parseInt(timer % 60, 10);
     
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+    
+                console.log("Countdown: " + minutes + ":" + seconds);
+                display.textContent = minutes + ":" + seconds;
+    
+                if (--timer < 0) {
+                    clearInterval(interval);
+                    // Submit the form when the timer reaches zero
+                    document.querySelector("form").submit();
+                }
+            }, 1000);
+        }
+    
+        // Function to initialize the timer
+        function initializeTimer(duration) {
+    console.log("Initializing timer with duration: " + duration);
+    var display = document.querySelector('#timer');
+    startTimer(duration, display);
+}
+    
+        // Get the duration from the backend (e.g., pass it as a template variable)
+        var duration = "{{ duration }}"; // Replace with the actual duration in seconds
+    
+        // Call the initializeTimer function with the duration
+        initializeTimer(duration);
+    </script>
     <script type="module" src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"></script>
 </body>

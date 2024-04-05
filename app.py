@@ -1,5 +1,6 @@
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session, send_from_directory
 from flask_mysqldb import MySQL
+import time
 import json
 import os
 
@@ -31,7 +32,7 @@ def register():
         mysql.connection.commit()
         cur.close()
 
-        return 'Success'
+        return render_template('register.html', success_message=True)
     
     return render_template('register.html')
 
@@ -50,6 +51,7 @@ def login_user():
             return redirect('/category')  # Redirect to the category page
         else:
             return 'Wrong Username'
+
 @app.route('/Teams', methods=['GET', 'POST'])
 def Teams():
     try:
@@ -68,6 +70,14 @@ def Teams():
             # Update the answer for the current question
             questions[question_index]['selected_answer'] = selected_answer
 
+            # Check if the selected answer is correct and update the score
+            if selected_answer == questions[question_index]['answer']:
+                session['score'] = session.get('score', 0) + 1
+                questions[question_index]['is_correct'] = True
+                questions[question_index]['message'] = "Correct answer"
+            else:
+                questions[question_index]['is_correct'] = False
+                questions[question_index]['message'] = "Incorrect answer"
             # Increment the question index
             question_index += 1
 
@@ -82,8 +92,11 @@ def Teams():
                 # Store the updated question index in session
                 session['question_index'] = question_index
 
-                # Redirect to the result page
-                return redirect('/result')
+                # Retrieve the score from session
+                score = session.get('score', 0)
+
+                # Render the result page with the score
+                return render_template('result.html', score=score)
 
             # Redirect to the next question
             return redirect('/Teams')
@@ -92,20 +105,23 @@ def Teams():
             # Fetch the questions from the database if it's the first question
             if 'questions' not in session:
                 # Fetch the questions from the database
-                sql = "SELECT id, question FROM quiz WHERE category_list_id = 2"
+                sql = "SELECT id, question, choice_1, choice_2, choice_3, choice_4, answer FROM quiz WHERE category_list_id = 1"
                 cur.execute(sql)
                 questions = []
 
                 for row in cur.fetchall():
                     question_id = row[0]
                     question_text = row[1]
+                    choices = [row[2], row[3], row[4], row[5]]  # Extract choices from the row
+                    answer = row[6]  # Extract the correct answer from the row
 
                     question = {
                         'id': question_id,
                         'question': question_text,
-                        'choices': [],
-                        'answer': '',
-                        'selected_answer': ''
+                        'choices': choices,
+                        'answer': answer,  # Assuming choice_1 is the correct answer
+                        'selected_answer': '',
+                        'is_correct': False
                     }
 
                     questions.append(question)
@@ -113,6 +129,7 @@ def Teams():
                 # Set the initial question index
                 question_index = 0
 
+                session['score'] = 0  # Initialize the score
                 session['question_index'] = question_index
                 session['questions'] = questions
 
@@ -126,32 +143,30 @@ def Teams():
                 # Invalid index, redirect to an error page or handle the error appropriately
                 return render_template('error.html', message='Invalid question index')
 
-            # Fetch choices for the current question
+            # Update the is_correct flag for the previous question if it has been answered
+            if question_index > 0:
+                prev_question = questions[question_index - 1]
+                prev_question['is_correct'] = prev_question['selected_answer'] == prev_question['answer']
+
+            # Fetch the current question
             question = questions[question_index]
-            choices_sql = "SELECT choice_1, choice_2, choice_3, choice_4 FROM quiz WHERE id = %s "
-            cur.execute(choices_sql, (question['id'],))
-            choices_row = cur.fetchone()
 
-            # Extract choices from the row
-            choices = [choices_row[0], choices_row[1], choices_row[2], choices_row[3]]
-
-            # Update the choices and answer for the current question
-            question['choices'] = choices
-            question['answer'] = choices_row[0]  # Assuming choice_1 is the correct answer
+            # Retrieve the score from session
+            score = session.get('score', 0)
 
             cur.close()
 
-            # Check if it's the last question
-            if question_index + 1 == len(questions):
-                # Render the last questionApologies for the incomplete response. Here's the continuation of the code:
-                return render_template('Teams.html', question=question, is_last=True)
+            # Retrieve the duration from the database or a configuration file
+            duration = 60  # Replace with the actual duration in seconds
 
-            # Render the current question
-            return render_template('Teams.html', question=question)
+            # Check if it's the last question
+            is_last = question_index + 1 == len(questions)
+
+            # Render the current question with the timer, score, and is_last flag
+            return render_template('Teams.html', question=question, score=score, is_last=is_last, duration=duration)
 
     except Exception as e:
         return jsonify({'error': str(e)})
-
     
     
 @app.route('/Leagues', methods=['GET', 'POST'])
@@ -172,6 +187,14 @@ def Leagues():
             # Update the answer for the current question
             questions[question_index]['selected_answer'] = selected_answer
 
+            # Check if the selected answer is correct and update the score
+            if selected_answer == questions[question_index]['answer']:
+                session['score'] = session.get('score', 0) + 1
+                questions[question_index]['is_correct'] = True
+                questions[question_index]['message'] = "Correct answer"
+            else:
+                questions[question_index]['is_correct'] = False
+                questions[question_index]['message'] = "Incorrect answer"
             # Increment the question index
             question_index += 1
 
@@ -186,8 +209,11 @@ def Leagues():
                 # Store the updated question index in session
                 session['question_index'] = question_index
 
-                # Redirect to the result page
-                return redirect('/result')
+                # Retrieve the score from session
+                score = session.get('score', 0)
+
+                # Render the result page with the score
+                return render_template('result.html', score=score)
 
             # Redirect to the next question
             return redirect('/Leagues')
@@ -196,20 +222,23 @@ def Leagues():
             # Fetch the questions from the database if it's the first question
             if 'questions' not in session:
                 # Fetch the questions from the database
-                sql = "SELECT id, question FROM quiz WHERE category_list_id = 2"
+                sql = "SELECT id, question, choice_1, choice_2, choice_3, choice_4, answer FROM quiz WHERE category_list_id = 2"
                 cur.execute(sql)
                 questions = []
 
                 for row in cur.fetchall():
                     question_id = row[0]
                     question_text = row[1]
+                    choices = [row[2], row[3], row[4], row[5]]  # Extract choices from the row
+                    answer = row[6]  # Extract the correct answer from the row
 
                     question = {
                         'id': question_id,
                         'question': question_text,
-                        'choices': [],
-                        'answer': '',
-                        'selected_answer': ''
+                        'choices': choices,
+                        'answer': answer,  # Assuming choice_1 is the correct answer
+                        'selected_answer': '',
+                        'is_correct': False
                     }
 
                     questions.append(question)
@@ -217,6 +246,7 @@ def Leagues():
                 # Set the initial question index
                 question_index = 0
 
+                session['score'] = 0  # Initialize the score
                 session['question_index'] = question_index
                 session['questions'] = questions
 
@@ -230,133 +260,146 @@ def Leagues():
                 # Invalid index, redirect to an error page or handle the error appropriately
                 return render_template('error.html', message='Invalid question index')
 
-            # Fetch choices for the current question
+            # Update the is_correct flag for the previous question if it has been answered
+            if question_index > 0:
+                prev_question = questions[question_index - 1]
+                prev_question['is_correct'] = prev_question['selected_answer'] == prev_question['answer']
+
+            # Fetch the current question
             question = questions[question_index]
-            choices_sql = "SELECT choice_1, choice_2, choice_3, choice_4 FROM quiz WHERE id = %s "
-            cur.execute(choices_sql, (question['id'],))
-            choices_row = cur.fetchone()
 
-            # Extract choices from the row
-            choices = [choices_row[0], choices_row[1], choices_row[2], choices_row[3]]
-
-            # Update the choices and answer for the current question
-            question['choices'] = choices
-            question['answer'] = choices_row[0]  # Assuming choice_1 is the correct answer
+            # Retrieve the score from session
+            score = session.get('score', 0)
 
             cur.close()
 
-            # Check if it's the last question
-            if question_index + 1 == len(questions):
-                # Render the last questionApologies for the incomplete response. Here's the continuation of the code:
-                return render_template('Leagues.html', question=question, is_last=True)
+            # Retrieve the duration from the database or a configuration file
+            duration = 60  # Replace with the actual duration in seconds
 
-            # Render the current question
-            return render_template('Leagues.html', question=question)
+            # Check if it's the last question
+            is_last = question_index + 1 == len(questions)
+
+            # Render the current question with the timer, score, and is_last flag
+            return render_template('Leagues.html', question=question, score=score, is_last=is_last, duration=duration)
 
     except Exception as e:
         return jsonify({'error': str(e)})
 
 @app.route('/Players', methods=['GET', 'POST'])
 def Players():
-    try:
-        cur = mysql.connection.cursor()
+        try:
+            cur = mysql.connection.cursor()
 
-        if request.method == 'POST':
-            # Get the submitted answer
-            selected_answer = request.form.get('answer')
+            if request.method == 'POST':
+                # Get the submitted answer
+                selected_answer = request.form.get('answer')
 
-            # Retrieve the current question index from session
-            question_index = session.get('question_index', 0)
+                # Retrieve the current question index from session
+                question_index = session.get('question_index', 0)
 
-            # Retrieve the questions from session
-            questions = session.get('questions', [])
+                # Retrieve the questions from session
+                questions = session.get('questions', [])
 
-            # Update the answer for the current question
-            questions[question_index]['selected_answer'] = selected_answer
+                # Update the answer for the current question
+                questions[question_index]['selected_answer'] = selected_answer
 
-            # Increment the question index
-            question_index += 1
+                # Check if the selected answer is correct and update the score
+                if selected_answer == questions[question_index]['answer']:
+                    session['score'] = session.get('score', 0) + 1
+                    questions[question_index]['is_correct'] = True
+                    questions[question_index]['message'] = "Correct answer"
+                else:
+                    questions[question_index]['is_correct'] = False
+                    questions[question_index]['message'] = "Incorrect answer"
+                # Increment the question index
+                question_index += 1
 
-            # Store the updated values in session
-            session['question_index'] = question_index
-            session['questions'] = questions
-
-            if question_index >= len(questions):
-                # All questions answered, reset the question index to zero
-                question_index = 0
-
-                # Store the updated question index in session
-                session['question_index'] = question_index
-
-                # Redirect to the result page
-                return redirect('/result')
-
-            # Redirect to the next question
-            return redirect('/Players')
-
-        else:
-            # Fetch the questions from the database if it's the first question
-            if 'questions' not in session:
-                # Fetch the questions from the database
-                sql = "SELECT id, question FROM quiz WHERE category_list_id = 3"
-                cur.execute(sql)
-                questions = []
-
-                for row in cur.fetchall():
-                    question_id = row[0]
-                    question_text = row[1]
-
-                    question = {
-                        'id': question_id,
-                        'question': question_text,
-                        'choices': [],
-                        'answer': '',
-                        'selected_answer': ''
-                    }
-
-                    questions.append(question)
-
-                # Set the initial question index
-                question_index = 0
-
+                # Store the updated values in session
                 session['question_index'] = question_index
                 session['questions'] = questions
 
+                if question_index >= len(questions):
+                    # All questions answered, reset the question index to zero
+                    question_index = 0
+
+                    # Store the updated question index in session
+                    session['question_index'] = question_index
+
+                    # Retrieve the score from session
+                    score = session.get('score', 0)
+
+                    # Render the result page with the score
+                    return render_template('result.html', score=score)
+
+                # Redirect to the next question
+                return redirect('/Players')
+
             else:
-                # Retrieve the current question index and questions from session
-                question_index = session.get('question_index', 0)
-                questions = session.get('questions', [])
+                # Fetch the questions from the database if it's the first question
+                if 'questions' not in session:
+                    # Fetch the questions from the database
+                    sql = "SELECT id, question, choice_1, choice_2, choice_3, choice_4, answer FROM quiz WHERE category_list_id = 3"
+                    cur.execute(sql)
+                    questions = []
 
-            # Check if the question_index is valid
-            if question_index >= len(questions):
-                # Invalid index, redirect to an error page or handle the error appropriately
-                return render_template('error.html', message='Invalid question index')
+                    for row in cur.fetchall():
+                        question_id = row[0]
+                        question_text = row[1]
+                        choices = [row[2], row[3], row[4], row[5]]  # Extract choices from the row
+                        answer = row[6]  # Extract the correct answer from the row
 
-            # Fetch choices for the current question
-            question = questions[question_index]
-            choices_sql = "SELECT choice_1, choice_2, choice_3, choice_4 FROM quiz WHERE id = %s "
-            cur.execute(choices_sql, (question['id'],))
-            choices_row = cur.fetchone()
+                        question = {
+                            'id': question_id,
+                            'question': question_text,
+                            'choices': choices,
+                            'answer': answer,  # Assuming choice_1 is the correct answer
+                            'selected_answer': '',
+                            'is_correct': False
+                        }
 
-            # Extract choices from the row
-            choices = [choices_row[0], choices_row[1], choices_row[2], choices_row[3]]
+                        questions.append(question)
 
-            # Update the choices and answer for the current question
-            question['choices'] = choices
-            question['answer'] = choices_row[0]  # Assuming choice_1 is the correct answer
+                    # Set the initial question index
+                    question_index = 0
 
-            cur.close()
+                    session['score'] = 0  # Initialize the score
+                    session['question_index'] = question_index
+                    session['questions'] = questions
 
-            # Check if it's the last question
-            if question_index + 1 == len(questions):
-                # Render the last questionApologies for the incomplete response. Here's the continuation of the code:
-                return render_template('Players.html', question=question, is_last=True)
+                else:
+                    # Retrieve the current question index and questions from session
+                    question_index = session.get('question_index', 0)
+                    questions = session.get('questions', [])
 
-            # Render the current question
-            return render_template('Players.html', question=question)
+                # Check if the question_index is valid
+                if question_index >= len(questions):
+                    # Invalid index, redirect to an error page or handle the error appropriately
+                    return render_template('error.html', message='Invalid question index')
 
-    except Exception as e:
-        return jsonify({'error': str(e)})
+                # Update the is_correct flag for the previous question if it has been answered
+                if question_index > 0:
+                    prev_question = questions[question_index - 1]
+                    prev_question['is_correct'] = prev_question['selected_answer'] == prev_question['answer']
+
+                # Fetch the current question
+                question = questions[question_index]
+
+                # Retrieve the score from session
+                score = session.get('score', 0)
+
+                cur.close()
+
+                # Retrieve the duration from the database or a configuration file
+                duration = 60  # Replace with the actual duration in seconds
+
+                # Check if it's the last question
+                is_last = question_index + 1 == len(questions)
+
+                # Render the current question with the timer, score, and is_last flag
+                return render_template('Players.html', question=question, score=score, is_last=is_last, duration=duration)
+
+        except Exception as e:
+            return jsonify({'error': str(e)})
 
 @app.route('/category')
 def category():
